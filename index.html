@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Día de Muertos</title>
+<meta name="description" content="Video especial de Día de Muertos.">
+<meta property="og:title" content="Día de Muertos">
+<meta property="og:description" content="Video especial de Día de Muertos.">
+<meta property="og:image" content="poster.jpg">
+<meta property="og:type" content="video.other">
+<meta name="theme-color" content="#1a0f1f">
+<link rel="preload" as="image" href="poster.jpg">
+<style>
+  :root{--bg:#1a0f1f;--marigold:#f5a524;--pink:#e2397f;--text:#fdf3e7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:radial-gradient(120% 80% at 50% 0%,#3a1d3f 0%,var(--bg) 60%);color:var(--text);
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;
+       align-items:center;justify-content:center;min-height:100svh;padding:16px;gap:18px}
+  h1{font-size:clamp(1.6rem,6vw,2.6rem);letter-spacing:.04em;text-align:center;
+     background:linear-gradient(90deg,var(--marigold),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .frame{position:relative;width:100%;max-width:960px;aspect-ratio:16/9;border-radius:16px;overflow:hidden;
+         box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 2px rgba(245,165,36,.35)}
+  video{width:100%;height:100%;display:block;background:#000;object-fit:contain}
+  .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;
+        background:rgba(0,0,0,.25);border:0;cursor:pointer;color:var(--text);font:inherit;font-size:1rem;transition:opacity .3s}
+  .play.hide{opacity:0;pointer-events:none}
+  .play .btn{width:84px;height:84px;border-radius:50%;background:var(--marigold);display:grid;place-items:center;
+             box-shadow:0 0 0 10px rgba(245,165,36,.25);animation:pulse 2s infinite}
+  .play .btn svg{width:34px;height:34px;margin-left:5px;fill:#1a0f1f}
+  @keyframes pulse{50%{box-shadow:0 0 0 18px rgba(245,165,36,.08)}}
+  p.hint{font-size:.85rem;opacity:.7;text-align:center}
+  .petals{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:-1}
+  .petals i{position:absolute;top:-20px;width:10px;height:14px;border-radius:60% 0 60% 0;background:var(--marigold);opacity:.6;
+            animation:fall linear infinite}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+  @media (prefers-reduced-motion:reduce){.petals,.play .btn{animation:none}}
+</style>
+</head>
+<body>
+  <div class="petals" aria-hidden="true"></div>
+  <h1>Día de Muertos</h1>
+  <div class="frame">
+    <video id="v" src="video.mp4" poster="poster.jpg" preload="metadata" playsinline controlslist="nodownload"></video>
+    <button class="play" id="p" aria-label="Reproducir video con sonido">
+      <span class="btn"><svg viewBox="0 0 24 24"><path d="M6 4l15 8-15 8z"/></svg></span>
+      <span>Toca para ver con sonido</span>
+    </button>
+  </div>
+  <p class="hint">Sube el volumen 🔊 · Gira tu teléfono para verlo en grande</p>
+<script>
+  const v=document.getElementById('v'), p=document.getElementById('p');
+  p.addEventListener('click',()=>{v.muted=false;v.play();p.classList.add('hide');});
+  v.addEventListener("play",()=>{v.controls=true;p.classList.add("hide");});
+  v.addEventListener('ended',()=>{p.classList.remove('hide');p.querySelector('span:last-child').textContent='Ver de nuevo';});
+  const box=document.querySelector('.petals');
+  for(let i=0;i<14;i++){const e=document.createElement('i');e.style.left=Math.random()*100+'vw';
+    e.style.animationDuration=(8+Math.random()*8)+'s';e.style.animationDelay=(-Math.random()*16)+'s';
+    e.style.transform='scale('+(0.6+Math.random()*0.8)+')';box.appendChild(e);}
+</script>
+</body>
+</html>
