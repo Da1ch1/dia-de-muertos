@@ -151,8 +151,11 @@
 
   async function start(){
     let total;
+    let yaContado=false;
+    try{ yaContado=sessionStorage.getItem('dm_contado')==='1'; }catch(e){}
     try{
-      total=await call('POST');
+      total=await call(yaContado?'GET':'POST');
+      if(!yaContado){ try{ sessionStorage.setItem('dm_contado','1'); }catch(e){} }
     }catch(e){
       try{ total=await call('GET'); }catch(e2){
         counterEl.classList.remove('loading');
