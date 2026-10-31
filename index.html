@@ -41,11 +41,16 @@
 
   /* ---- Contador de visitas ---- */
   .counter{position:relative;z-index:2;display:flex;justify-content:center;width:100%;padding:6px 16px 2px;margin:0;flex-shrink:0}
-  .visit-count{font-size:clamp(.95rem,2.8vw,1.08rem);font-weight:500;text-align:center;color:var(--marigold);letter-spacing:.04em;line-height:1.35}
-  .visit-count .num{font-weight:700;font-variant-numeric:tabular-nums}
+  .count-wrap{position:relative;display:inline-block;padding:4px 8px}
+  .visit-count{font-size:clamp(.95rem,2.8vw,1.08rem);font-weight:500;text-align:center;color:var(--marigold);letter-spacing:.04em;line-height:1.35;position:relative;z-index:0}
+  .visit-count .num{font-weight:700;font-variant-numeric:tabular-nums;display:inline-block;min-width:1.5ch}
   .visit-count .word{font-weight:500;opacity:.92;text-transform:lowercase}
-  .counter.loading .visit-count{opacity:.55}
+  .counter.loading .visit-count .num{opacity:.35}
   .counter.err .visit-count{opacity:.65}
+  .counter.sweeping .visit-count .num{opacity:0}
+  .sweep{position:absolute;inset:-6px -28px;pointer-events:none;overflow:hidden;z-index:1}
+  .sweep i{position:absolute;left:0;top:0;width:12px;height:17px;border-radius:60% 0 60% 0;will-change:transform,opacity;
+           box-shadow:0 1px 2px rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
@@ -60,7 +65,10 @@
     </button>
   </div>
   <section class="counter loading" id="counter" aria-live="polite" aria-label="Contador de visitas">
-    <p class="visit-count" id="visitLine"><span class="num" id="visitNum">…</span> <span class="word">visitas</span></p>
+    <div class="count-wrap">
+      <p class="visit-count" id="visitLine"><span class="num" id="visitNum">…</span> <span class="word">visitas</span></p>
+      <div class="sweep" id="sweep" aria-hidden="true"></div>
+    </div>
   </section>
   <p class="hint">Sube el volumen 🔊 · Gira tu teléfono para verlo en grande</p>
   <p class="hint">Creado por Maria Luisa</p>
@@ -76,42 +84,101 @@
     e.style.transform='scale('+(0.6+Math.random()*0.8)+')';box.appendChild(e);}
 
   /* ===== Contador de visitas ===== */
-  const API='/api/visitas', POLL_MS=10000;
-  const visitNumEl=document.getElementById('visitNum'), counterEl=document.getElementById('counter');
-  let shown=null;
+  const API='/api/visitas', POLL_MS=10000, INTRO_MS=2800;
+  const visitNumEl=document.getElementById('visitNum'), counterEl=document.getElementById('counter'), sweepEl=document.getElementById('sweep');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let shown=null, busy=false, pending=null, introDone=false, introTimer=null;
 
   function render(n){
     visitNumEl.textContent=n.toLocaleString('es-MX');
     counterEl.setAttribute('aria-label',`${n.toLocaleString('es-MX')} visitas`);
   }
-  function update(n){
-    if(typeof n!=='number'||n===shown) return;
-    shown=n;
+
+  function sweepTo(n){
+    if(reduce){
+      shown=n; render(n);
+      counterEl.classList.remove('loading','err','sweeping');
+      return Promise.resolve();
+    }
+    busy=true;
+    counterEl.classList.add('sweeping');
     counterEl.classList.remove('loading','err');
-    render(n);
+    const W=Math.max(sweepEl.clientWidth,120), H=Math.max(sweepEl.clientHeight,28), N=40, DUR=1400;
+    const colors=['#f5a524','#f08a12','#ffb22e','#e8780c','#ffc845'];
+    const anims=[];
+    for(let i=0;i<N;i++){
+      const e=document.createElement('i');
+      const y=Math.random()*H, sc=.55+Math.random()*.85, delay=Math.random()*420, dur=DUR*(.72+Math.random()*.45);
+      e.style.background=colors[i%colors.length];
+      sweepEl.appendChild(e);
+      const wob=(Math.random()-.5)*18, r0=Math.random()*360, r1=r0+160+Math.random()*320;
+      const a=e.animate([
+        {transform:`translate(-48px,${y}px) rotate(${r0}deg) scale(${sc})`,opacity:0},
+        {opacity:.95,offset:.1},
+        {transform:`translate(${W*.52}px,${y+wob}px) rotate(${(r0+r1)/2}deg) scale(${sc*1.1})`,offset:.5},
+        {opacity:.9,offset:.82},
+        {transform:`translate(${W+48}px,${y-wob}px) rotate(${r1}deg) scale(${sc})`,opacity:0}
+      ],{duration:dur,delay,easing:'cubic-bezier(.42,.06,.58,.94)',fill:'forwards'});
+      anims.push(a.finished.then(()=>e.remove()));
+    }
+    return new Promise(resolve=>{
+      setTimeout(()=>{
+        shown=n; render(n);
+        counterEl.classList.remove('sweeping');
+      }, DUR*.52);
+      Promise.all(anims).then(()=>{
+        busy=false;
+        if(pending!==null&&pending!==shown){
+          const q=pending; pending=null; sweepTo(q).then(resolve);
+        } else resolve();
+      });
+    });
   }
+
+  function reveal(n){
+    if(typeof n!=='number') return;
+    if(n===shown&&!counterEl.classList.contains('loading')) return;
+    if(busy){ pending=n; return; }
+    return sweepTo(n);
+  }
+
   async function call(method){
     const r=await fetch(API+(method==='POST'?'?src='+encodeURIComponent(new URLSearchParams(location.search).get('src')||'directo'):''),
                         {method,cache:'no-store'});
     if(!r.ok) throw new Error(String(r.status));
     return (await r.json()).total;
   }
+
   async function start(){
-    let first;
+    let total;
     try{
-      first=await call('POST');
+      total=await call('POST');
     }catch(e){
-      try{ first=await call('GET'); }catch(e2){
-      counterEl.classList.remove('loading');
-      counterEl.classList.add('err');
-      visitNumEl.textContent='0';
-      counterEl.setAttribute('aria-label','Visitas (contador temporalmente no disponible)');
-      return;
+      try{ total=await call('GET'); }catch(e2){
+        counterEl.classList.remove('loading');
+        counterEl.classList.add('err');
+        visitNumEl.textContent='0';
+        counterEl.setAttribute('aria-label','Visitas (contador temporalmente no disponible)');
+        introDone=true;
+        return;
       }
     }
-    update(first);
-    setInterval(async()=>{ if(document.hidden) return; try{update(await call('GET'));}catch(e){} }, POLL_MS);
-    document.addEventListener('visibilitychange',async()=>{ if(!document.hidden){try{update(await call('GET'));}catch(e){}} });
+    introTimer=setTimeout(()=>{
+      introDone=true;
+      reveal(total);
+    }, INTRO_MS);
+    setInterval(async()=>{
+      if(!introDone||document.hidden) return;
+      try{
+        const t=await call('GET');
+        if(t!==shown) reveal(t);
+      }catch(e){}
+    }, POLL_MS);
+    document.addEventListener('visibilitychange',async()=>{
+      if(!document.hidden&&introDone){
+        try{ const t=await call('GET'); if(t!==shown) reveal(t); }catch(e){}
+      }
+    });
   }
   start();
 </script>
