@@ -1,0 +1,8 @@
+{
+    "name": "dia-de-muertos",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+      "@libsql/client": "^0.17.4"
+    }
+  }

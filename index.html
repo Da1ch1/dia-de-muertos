@@ -36,6 +36,20 @@
             animation:fall linear infinite}
   @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
   @media (prefers-reduced-motion:reduce){.petals,.play .btn{animation:none}}
+
+  /* ---- Contador de visitas ---- */
+  .counter{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 24px 0}
+  .flowers{--p:12px;display:flex;gap:calc(var(--p)*1.1);justify-content:center;flex-wrap:wrap;min-height:calc(var(--p)*7);align-items:center;
+           filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+  .pdigit{display:grid;grid-template-columns:repeat(5,var(--p));grid-auto-rows:var(--p)}
+  .pdigit i{display:block;width:100%;height:100%;border-radius:60% 0 60% 0;
+            background:radial-gradient(circle at 30% 30%,#ffd35a 0%,#f7961b 55%,#d96a08 100%);
+            box-shadow:inset 0 0 0 .5px rgba(150,60,0,.55)}
+  .counter .label{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--marigold);opacity:.9}
+  .counter.loading .flowers{opacity:.45}
+  .sweep{position:absolute;inset:-10px -40px;pointer-events:none;overflow:visible}
+  .sweep i{position:absolute;left:0;top:0;width:16px;height:22px;border-radius:60% 0 60% 0;will-change:transform,opacity}
+  @media (max-width:420px){.flowers{--p:10px}}
 </style>
 </head>
 <body>
@@ -48,6 +62,11 @@
       <span>Toca para ver con sonido</span>
     </button>
   </div>
+  <section class="counter loading" id="counter" aria-live="polite">
+    <div class="flowers" id="flowers" role="img" aria-label="Cargando visitas"></div>
+    <div class="label">visitas</div>
+    <div class="sweep" id="sweep" aria-hidden="true"></div>
+  </section>
   <p class="hint">Sube el volumen 🔊 · Gira tu teléfono para verlo en grande</p>
   <p class="hint">Creado por Maria Luisa</p>
 <script>
@@ -59,6 +78,88 @@
   for(let i=0;i<14;i++){const e=document.createElement('i');e.style.left=Math.random()*100+'vw';
     e.style.animationDuration=(8+Math.random()*8)+'s';e.style.animationDelay=(-Math.random()*16)+'s';
     e.style.transform='scale('+(0.6+Math.random()*0.8)+')';box.appendChild(e);}
+
+  /* ===== Contador de visitas con pétalos de cempasúchil ===== */
+  const API='/api/visitas', POLL_MS=10000;
+  const flowersEl=document.getElementById('flowers'), counterEl=document.getElementById('counter'), sweepEl=document.getElementById('sweep');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let shown=null, busy=false, pending=null;
+
+  // Cada número se dibuja con pétalos (cuadrícula de 5 x 7)
+  const FONT={
+    '0':['01110','10001','10011','10101','11001','10001','01110'],
+    '1':['00100','01100','00100','00100','00100','00100','01110'],
+    '2':['01110','10001','00001','00010','00100','01000','11111'],
+    '3':['11111','00010','00100','00010','00001','10001','01110'],
+    '4':['00010','00110','01010','10010','11111','00010','00010'],
+    '5':['11111','10000','11110','00001','00001','10001','01110'],
+    '6':['00110','01000','10000','11110','10001','10001','01110'],
+    '7':['11111','00001','00010','00100','01000','01000','01000'],
+    '8':['01110','10001','10001','01110','10001','10001','01110'],
+    '9':['01110','10001','10001','01111','00001','00010','01100']};
+  function digitHTML(d){
+    let h='<div class="pdigit">';
+    FONT[d].join('').split('').forEach(on=>{
+      if(on==='1'){const r=Math.round(Math.random()*360), s=(.85+Math.random()*.3).toFixed(2);
+        h+=`<i style="transform:rotate(${r}deg) scale(${s})"></i>`;} else h+='<span></span>';
+    });
+    return h+'</div>';
+  }
+  function render(n){
+    flowersEl.innerHTML=[...String(n)].map(digitHTML).join('');
+    flowersEl.setAttribute('aria-label',`${n.toLocaleString('es-MX')} visitas`);
+  }
+
+  // Ráfaga de pétalos de izquierda a derecha; el número cambia cuando los pétalos lo cubren
+  function sweepTo(n){
+    if(reduce){render(n);return Promise.resolve();}
+    busy=true;
+    const W=sweepEl.clientWidth, H=sweepEl.clientHeight, N=46, DUR=1300;
+    const colors=['#f5a524','#f08a12','#ffb22e','#e8780c','#ffc845'];
+    const anims=[];
+    for(let i=0;i<N;i++){
+      const e=document.createElement('i');
+      const y=Math.random()*H, sc=.6+Math.random()*.9, delay=Math.random()*380, dur=DUR*(.75+Math.random()*.4);
+      e.style.background=colors[i%colors.length];
+      sweepEl.appendChild(e);
+      const wob=(Math.random()-.5)*40, r0=Math.random()*360, r1=r0+180+Math.random()*360;
+      const a=e.animate([
+        {transform:`translate(-60px,${y}px) rotate(${r0}deg) scale(${sc})`,opacity:0},
+        {opacity:1,offset:.12},
+        {transform:`translate(${W*.5}px,${y+wob}px) rotate(${(r0+r1)/2}deg) scale(${sc*1.15})`,offset:.5},
+        {opacity:1,offset:.85},
+        {transform:`translate(${W+60}px,${y-wob}px) rotate(${r1}deg) scale(${sc})`,opacity:0}
+      ],{duration:dur,delay,easing:'cubic-bezier(.45,.05,.55,.95)',fill:'forwards'});
+      anims.push(a.finished.then(()=>e.remove()));
+    }
+    setTimeout(()=>{render(n);counterEl.classList.remove('loading');}, DUR*.55);
+    return Promise.all(anims).then(()=>{busy=false;
+      if(pending!==null&&pending!==shown){const q=pending;pending=null;shown=q;sweepTo(q);} });
+  }
+  function update(n){
+    if(typeof n!=='number'||n===shown) return;
+    if(busy){pending=n;return;}
+    shown=n; sweepTo(n);
+  }
+  async function call(method){
+    const r=await fetch(API+(method==='POST'?'?src='+encodeURIComponent(new URLSearchParams(location.search).get('src')||'directo'):''),
+                        {method,cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    return (await r.json()).total;
+  }
+  async function start(){
+    let first;
+    try{
+      // una visita por sesión (recargar no suma otra vez)
+      let counted=false; try{counted=sessionStorage.getItem('dm_contado')==='1';}catch(e){}
+      first=await call(counted?'GET':'POST');
+      if(!counted){try{sessionStorage.setItem('dm_contado','1');}catch(e){}}
+    }catch(e){ counterEl.style.display='none'; return; }
+    update(first);
+    setInterval(async()=>{ if(document.hidden) return; try{update(await call('GET'));}catch(e){} }, POLL_MS);
+    document.addEventListener('visibilitychange',async()=>{ if(!document.hidden){try{update(await call('GET'));}catch(e){}} });
+  }
+  render(0); start();
 </script>
 </body>
 </html>
