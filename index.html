@@ -99,15 +99,15 @@
   async function start(){
     let first;
     try{
-      let counted=false; try{counted=sessionStorage.getItem('dm_contado')==='1';}catch(e){}
-      first=await call(counted?'GET':'POST');
-      if(!counted){try{sessionStorage.setItem('dm_contado','1');}catch(e){}}
+      first=await call('POST');
     }catch(e){
+      try{ first=await call('GET'); }catch(e2){
       counterEl.classList.remove('loading');
       counterEl.classList.add('err');
       visitNumEl.textContent='0';
       counterEl.setAttribute('aria-label','Visitas (contador temporalmente no disponible)');
       return;
+      }
     }
     update(first);
     setInterval(async()=>{ if(document.hidden) return; try{update(await call('GET'));}catch(e){} }, POLL_MS);
