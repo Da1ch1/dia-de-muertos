@@ -19,11 +19,11 @@
        font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;
        align-items:center;justify-content:flex-start;min-height:100svh;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));
        overflow-y:auto}
-  .content{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;max-width:960px;margin:auto 0;flex-shrink:0}
-  h1{font-size:clamp(1.6rem,6vw,2.6rem);letter-spacing:.04em;text-align:center;
+  .content{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:720px;margin:auto 0;flex-shrink:0}
+  h1{font-size:clamp(1.4rem,5.5vw,2.2rem);letter-spacing:.04em;text-align:center;
      background:linear-gradient(90deg,var(--marigold),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .frame{position:relative;z-index:1;width:100%;max-width:960px;aspect-ratio:16/9;border-radius:16px;overflow:hidden;
-         box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 2px rgba(245,165,36,.35);flex-shrink:0}
+  .frame{position:relative;z-index:1;width:min(100%,640px);max-height:min(52svh,360px);aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+         box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 0 2px rgba(245,165,36,.35);flex-shrink:0}
   video{width:100%;height:100%;display:block;background:#000;object-fit:contain}
   .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;
         background:rgba(0,0,0,.25);border:0;cursor:pointer;color:var(--text);font:inherit;font-size:1rem;transition:opacity .3s}
@@ -32,7 +32,7 @@
              box-shadow:0 0 0 10px rgba(245,165,36,.25);animation:pulse 2s infinite}
   .play .btn svg{width:34px;height:34px;margin-left:5px;fill:#1a0f1f}
   @keyframes pulse{50%{box-shadow:0 0 0 18px rgba(245,165,36,.08)}}
-  p.hint{font-size:.85rem;opacity:.7;text-align:center}
+  p.hint{font-size:.85rem;opacity:.7;text-align:center;margin-top:2px}
   .petals{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:-1}
   .petals i{position:absolute;top:-20px;width:10px;height:14px;border-radius:60% 0 60% 0;background:var(--marigold);opacity:.6;
             animation:fall linear infinite}
@@ -40,19 +40,12 @@
   @media (prefers-reduced-motion:reduce){.petals,.play .btn{animation:none}}
 
   /* ---- Contador de visitas ---- */
-  .counter{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;
-           width:100%;padding:8px 24px 0;margin-top:2px;flex-shrink:0;isolation:isolate}
-  .flowers{--p:12px;display:flex;gap:calc(var(--p)*1.1);justify-content:center;flex-wrap:wrap;min-height:calc(var(--p)*7);align-items:center;
-           filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
-  .pdigit{display:grid;grid-template-columns:repeat(5,var(--p));grid-auto-rows:var(--p)}
-  .pdigit i{display:block;width:100%;height:100%;border-radius:60% 0 60% 0;
-            background:radial-gradient(circle at 30% 30%,#ffd35a 0%,#f7961b 55%,#d96a08 100%);
-            box-shadow:inset 0 0 0 .5px rgba(150,60,0,.55)}
-  .counter .label{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--marigold);opacity:.9}
-  .counter.loading .flowers{opacity:.45}
-  .sweep{position:absolute;left:0;right:0;top:0;height:calc(var(--p,12px)*7 + 8px);pointer-events:none;overflow:hidden}
-  .sweep i{position:absolute;left:0;top:0;width:16px;height:22px;border-radius:60% 0 60% 0;will-change:transform,opacity}
-  @media (max-width:420px){.flowers{--p:10px}}
+  .counter{position:relative;z-index:2;display:flex;justify-content:center;width:100%;padding:6px 16px 2px;margin:0;flex-shrink:0}
+  .visit-count{font-size:clamp(.95rem,2.8vw,1.08rem);font-weight:500;text-align:center;color:var(--marigold);letter-spacing:.04em;line-height:1.35}
+  .visit-count .num{font-weight:700;font-variant-numeric:tabular-nums}
+  .visit-count .word{font-weight:500;opacity:.92;text-transform:lowercase}
+  .counter.loading .visit-count{opacity:.55}
+  .counter.err .visit-count{opacity:.65}
 </style>
 </head>
 <body>
@@ -66,10 +59,8 @@
       <span>Toca para ver con sonido</span>
     </button>
   </div>
-  <section class="counter loading" id="counter" aria-live="polite">
-    <div class="flowers" id="flowers" role="img" aria-label="Cargando visitas"></div>
-    <div class="label">visitas</div>
-    <div class="sweep" id="sweep" aria-hidden="true"></div>
+  <section class="counter loading" id="counter" aria-live="polite" aria-label="Contador de visitas">
+    <p class="visit-count" id="visitLine"><span class="num" id="visitNum">…</span> <span class="word">visitas</span></p>
   </section>
   <p class="hint">Sube el volumen 🔊 · Gira tu teléfono para verlo en grande</p>
   <p class="hint">Creado por Maria Luisa</p>
@@ -84,87 +75,45 @@
     e.style.animationDuration=(8+Math.random()*8)+'s';e.style.animationDelay=(-Math.random()*16)+'s';
     e.style.transform='scale('+(0.6+Math.random()*0.8)+')';box.appendChild(e);}
 
-  /* ===== Contador de visitas con pétalos de cempasúchil ===== */
+  /* ===== Contador de visitas ===== */
   const API='/api/visitas', POLL_MS=10000;
-  const flowersEl=document.getElementById('flowers'), counterEl=document.getElementById('counter'), sweepEl=document.getElementById('sweep');
-  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let shown=null, busy=false, pending=null;
+  const visitNumEl=document.getElementById('visitNum'), counterEl=document.getElementById('counter');
+  let shown=null;
 
-  // Cada número se dibuja con pétalos (cuadrícula de 5 x 7)
-  const FONT={
-    '0':['01110','10001','10011','10101','11001','10001','01110'],
-    '1':['00100','01100','00100','00100','00100','00100','01110'],
-    '2':['01110','10001','00001','00010','00100','01000','11111'],
-    '3':['11111','00010','00100','00010','00001','10001','01110'],
-    '4':['00010','00110','01010','10010','11111','00010','00010'],
-    '5':['11111','10000','11110','00001','00001','10001','01110'],
-    '6':['00110','01000','10000','11110','10001','10001','01110'],
-    '7':['11111','00001','00010','00100','01000','01000','01000'],
-    '8':['01110','10001','10001','01110','10001','10001','01110'],
-    '9':['01110','10001','10001','01111','00001','00010','01100']};
-  function digitHTML(d){
-    let h='<div class="pdigit">';
-    FONT[d].join('').split('').forEach(on=>{
-      if(on==='1'){const r=Math.round(Math.random()*360), s=(.85+Math.random()*.3).toFixed(2);
-        h+=`<i style="transform:rotate(${r}deg) scale(${s})"></i>`;} else h+='<span></span>';
-    });
-    return h+'</div>';
-  }
   function render(n){
-    flowersEl.innerHTML=[...String(n)].map(digitHTML).join('');
-    flowersEl.setAttribute('aria-label',`${n.toLocaleString('es-MX')} visitas`);
-  }
-
-  // Ráfaga de pétalos de izquierda a derecha; el número cambia cuando los pétalos lo cubren
-  function sweepTo(n){
-    if(reduce){render(n);return Promise.resolve();}
-    busy=true;
-    const W=sweepEl.clientWidth, H=sweepEl.clientHeight, N=46, DUR=1300;
-    const colors=['#f5a524','#f08a12','#ffb22e','#e8780c','#ffc845'];
-    const anims=[];
-    for(let i=0;i<N;i++){
-      const e=document.createElement('i');
-      const y=Math.random()*H, sc=.6+Math.random()*.9, delay=Math.random()*380, dur=DUR*(.75+Math.random()*.4);
-      e.style.background=colors[i%colors.length];
-      sweepEl.appendChild(e);
-      const wob=(Math.random()-.5)*40, r0=Math.random()*360, r1=r0+180+Math.random()*360;
-      const a=e.animate([
-        {transform:`translate(-60px,${y}px) rotate(${r0}deg) scale(${sc})`,opacity:0},
-        {opacity:1,offset:.12},
-        {transform:`translate(${W*.5}px,${y+wob}px) rotate(${(r0+r1)/2}deg) scale(${sc*1.15})`,offset:.5},
-        {opacity:1,offset:.85},
-        {transform:`translate(${W+60}px,${y-wob}px) rotate(${r1}deg) scale(${sc})`,opacity:0}
-      ],{duration:dur,delay,easing:'cubic-bezier(.45,.05,.55,.95)',fill:'forwards'});
-      anims.push(a.finished.then(()=>e.remove()));
-    }
-    setTimeout(()=>{render(n);counterEl.classList.remove('loading');}, DUR*.55);
-    return Promise.all(anims).then(()=>{busy=false;
-      if(pending!==null&&pending!==shown){const q=pending;pending=null;shown=q;sweepTo(q);} });
+    visitNumEl.textContent=n.toLocaleString('es-MX');
+    counterEl.setAttribute('aria-label',`${n.toLocaleString('es-MX')} visitas`);
   }
   function update(n){
     if(typeof n!=='number'||n===shown) return;
-    if(busy){pending=n;return;}
-    shown=n; sweepTo(n);
+    shown=n;
+    counterEl.classList.remove('loading','err');
+    render(n);
   }
   async function call(method){
     const r=await fetch(API+(method==='POST'?'?src='+encodeURIComponent(new URLSearchParams(location.search).get('src')||'directo'):''),
                         {method,cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
+    if(!r.ok) throw new Error(String(r.status));
     return (await r.json()).total;
   }
   async function start(){
     let first;
     try{
-      // una visita por sesión (recargar no suma otra vez)
       let counted=false; try{counted=sessionStorage.getItem('dm_contado')==='1';}catch(e){}
       first=await call(counted?'GET':'POST');
       if(!counted){try{sessionStorage.setItem('dm_contado','1');}catch(e){}}
-    }catch(e){ counterEl.style.display='none'; return; }
+    }catch(e){
+      counterEl.classList.remove('loading');
+      counterEl.classList.add('err');
+      visitNumEl.textContent='0';
+      counterEl.setAttribute('aria-label','Visitas (contador temporalmente no disponible)');
+      return;
+    }
     update(first);
     setInterval(async()=>{ if(document.hidden) return; try{update(await call('GET'));}catch(e){} }, POLL_MS);
     document.addEventListener('visibilitychange',async()=>{ if(!document.hidden){try{update(await call('GET'));}catch(e){}} });
   }
-  render(0); start();
+  start();
 </script>
 </body>
 </html>
